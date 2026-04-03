@@ -15,7 +15,6 @@ namespace RealtimeChat.Api.Controllers
             _context = context;
         }
 
-        /// <summary>Повертає останні N повідомлень (для завантаження історії)</summary>
         [HttpGet]
         public async Task<IActionResult> Get([FromQuery] int count = 50)
         {
