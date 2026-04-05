@@ -1,9 +1,8 @@
+import Chat from './components/Chat';
 import './App.css';
+
 function App() {
-  return (
-    <div className="App">
-      <h1>Realtime Chat</h1>
-    </div>
-  );
+  return <Chat />;
 }
+
 export default App;
