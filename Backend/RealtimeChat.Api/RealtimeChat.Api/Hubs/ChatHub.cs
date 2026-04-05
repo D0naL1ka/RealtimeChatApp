@@ -2,6 +2,7 @@
 using RealtimeChat.Api.Services;
 using RealtimeChatApp.Data;
 using RealtimeChatApp.Data.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace RealtimeChat.Api.Hubs
 {
@@ -33,7 +34,38 @@ namespace RealtimeChat.Api.Hubs
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
-            await Clients.All.SendAsync("ReceiveMessage", user, text, message.CreatedAt, label, pos, neg, neu);
+            await Clients.All.SendAsync("ReceiveMessage", new
+            {
+                message.Id,
+                message.Username,
+                message.Text,
+                message.CreatedAt,
+                message.Sentiment,
+                message.PositiveScore,
+                message.NegativeScore,
+                message.NeutralScore
+            });
+        }
+        public async Task<object[]> GetHistory()
+        {
+            var messages = await _context.Messages
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(50)
+                .OrderBy(m => m.CreatedAt)
+                .Select(m => new
+                {
+                    m.Id,
+                    m.Username,
+                    m.Text,
+                    m.CreatedAt,
+                    m.Sentiment,
+                    m.PositiveScore,
+                    m.NegativeScore,
+                    m.NeutralScore
+                })
+                .ToListAsync();
+
+            return messages.Cast<object>().ToArray();
         }
     }
 }
