@@ -1,0 +1,42 @@
+name: Deploy Frontend to Azure
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Frontend/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          cd Frontend
+          npm install
+
+      - name: Build
+        run: |
+          cd Frontend
+          npm run build
+        env:
+          VITE_BACKEND_URL: https://${{ vars.AZURE_API_APP_NAME }}.azurewebsites.net
+
+      - name: Copy web.config to dist
+        run: cp Frontend/web.config Frontend/dist/
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_FRONTEND_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_UI_PUBLISH_PROFILE }}
+          package: Frontend/dist
