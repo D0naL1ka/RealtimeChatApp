@@ -1,32 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import * as signalR from '@microsoft/signalr'
+import EmojiPicker, { type EmojiClickData, EmojiStyle } from 'emoji-picker-react'
+import { Smile, Frown, Meh, Send, MessageCircleHeart } from 'lucide-react'
 import './Chat.css'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 interface Message {
-  id: number
-  username: string
-  text: string
-  createdAt: string
-  sentiment?: string
-  positiveScore?: number
-  negativeScore?: number
-  neutralScore?: number
+  id: number; username: string; text: string; createdAt: string;
+  sentiment?: string; positiveScore?: number; negativeScore?: number; neutralScore?: number;
 }
 
-function getSentimentInfo(sentiment?: string) {
-  switch (sentiment?.toLowerCase()) {
-    case 'positive':
-      return { bg: '#dcf8c6', label: 'Positive' }
-    case 'negative':
-      return { bg: '#ffd9d9', label: 'Negative' }
-    case 'mixed':
-      return { bg: '#fff3cd', label: 'Mixed' }
-    default:
-      return { bg: '#ffffff', label: 'Neutral' }
-  }
-}
+const SCORE_ROWS = [
+  { Icon: Smile, key: 'positiveScore' as const, color: '#16a34a' },
+  { Icon: Frown, key: 'negativeScore' as const, color: '#dc2626' },
+  { Icon: Meh,   key: 'neutralScore'  as const, color: '#64748b' },
+]
 
 export default function Chat() {
   const [username, setUsername] = useState('')
@@ -35,35 +24,41 @@ export default function Chat() {
   const [text, setText] = useState('')
   const [connection, setConnection] = useState<signalR.HubConnection | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [error, setError] = useState('')
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+
   const bottomRef = useRef<HTMLDivElement>(null)
+  const emojiPickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const join = async () => {
     if (!username.trim()) return
     setIsConnecting(true)
-    setError('')
-
     try {
       const conn = new signalR.HubConnectionBuilder()
         .withUrl(`${BACKEND_URL}/hubs/chat`)
         .withAutomaticReconnect()
         .build()
 
-      conn.on('ReceiveMessage', (message: Message) => {
-        setMessages(prev => [...prev, message])
-      })
-
+      conn.on('ReceiveMessage', (m: Message) => setMessages(prev => [...prev, m]))
       await conn.start()
-      const history = await conn.invoke<Message[]>('GetHistory')
-      setMessages(history)
+      setMessages(await conn.invoke<Message[]>('GetHistory'))
       setConnection(conn)
       setJoined(true)
-    } catch (e) {
-      setError('Connection failed. Please try again.')
+    } catch {
+      alert('Connection failed')
     } finally {
       setIsConnecting(false)
     }
@@ -73,34 +68,26 @@ export default function Chat() {
     if (!text.trim() || !connection) return
     await connection.invoke('SendMessage', username, text)
     setText('')
+    setShowEmojiPicker(false)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
-
-  if (!joined) {
-    return (
-      <div className="join-container">
-        <div className="join-box">
-          <h1>Realtime Chat</h1>
-          <input
-            placeholder="Enter your name..."
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && join()}
-          />
-          {error && <span className="error">{error}</span>}
-          <button onClick={join} disabled={isConnecting}>
-            {isConnecting ? 'Connecting...' : 'Join Chat'}
-          </button>
-        </div>
+  if (!joined) return (
+    <div className="join-container">
+      <div className="join-box">
+        <MessageCircleHeart size={40} color="#128c7e" />
+        <h1>Realtime Chat</h1>
+        <input 
+          placeholder="Enter your name..." 
+          value={username} 
+          onChange={e => setUsername(e.target.value)} 
+          onKeyDown={e => e.key === 'Enter' && join()}
+        />
+        <button onClick={join} disabled={isConnecting}>
+          {isConnecting ? 'Connecting...' : 'Join Chat'}
+        </button>
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <div className="chat-container">
@@ -111,28 +98,20 @@ export default function Chat() {
 
       <div className="messages-list">
         {messages.map(msg => {
-          const info = getSentimentInfo(msg.sentiment)
           const isMe = msg.username === username
           return (
-            <div
-              key={msg.id}
-              className={`message ${isMe ? 'message-me' : 'message-other'}`}
-              style={{ background: isMe ? '#dcf8c6' : '#ffffff' }}
-            >
+            <div key={msg.id} className={`message ${isMe ? 'message-me' : 'message-other'} message-${msg.sentiment?.toLowerCase() || 'neutral'}`}>
               <div className="message-header">
                 <span className="message-author">{msg.username}</span>
-                <span className="sentiment-badge">
-                  {info.label}
-                </span>
-                <span className="message-time">
-                  {new Date(msg.createdAt).toLocaleTimeString()}
-                </span>
+                <span className="message-time">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               <div className="message-text">{msg.text}</div>
               <div className="sentiment-scores">
-                Pos: {((msg.positiveScore ?? 0) * 100).toFixed(0)}%
-                Neg: {((msg.negativeScore ?? 0) * 100).toFixed(0)}%
-                Neu: {((msg.neutralScore ?? 0) * 100).toFixed(0)}%
+                {SCORE_ROWS.map(({ Icon, key, color }) => (
+                  <span key={key} className="score-item" style={{ color }}>
+                    <Icon size={12} /> {((msg[key] ?? 0) * 100).toFixed(0)}%
+                  </span>
+                ))}
               </div>
             </div>
           )
@@ -141,13 +120,16 @@ export default function Chat() {
       </div>
 
       <div className="input-area">
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Write a message..."
-        />
-        <button onClick={sendMessage}>➤</button>
+        <div className="input-wrapper" ref={emojiPickerRef}>
+          <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()} placeholder="Write a message..." />
+          <button className="emoji-btn" onClick={() => setShowEmojiPicker(!showEmojiPicker)}><Smile size={22} /></button>
+          {showEmojiPicker && (
+            <div className="emoji-picker-container">
+              <EmojiPicker onEmojiClick={(d: EmojiClickData) => setText(t => t + d.emoji)} emojiStyle={EmojiStyle.NATIVE} width="100%" />
+            </div>
+          )}
+        </div>
+        <button className="send-btn" onClick={sendMessage}><Send size={20} /></button>
       </div>
     </div>
   )
