@@ -21,13 +21,13 @@ jobs:
 
       - name: Restore dependencies
         run: dotnet restore Backend/RealtimeChat.Api/RealtimeChat.Api/RealtimeChat.Api.csproj
-      
+
       - name: Build
         run: dotnet build Backend/RealtimeChat.Api/RealtimeChat.Api/RealtimeChat.Api.csproj --configuration Release --no-restore
-      
+
       - name: Publish
         run: dotnet publish Backend/RealtimeChat.Api/RealtimeChat.Api/RealtimeChat.Api.csproj --configuration Release --output ./publish
-     
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
