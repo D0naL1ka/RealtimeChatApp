@@ -180,5 +180,5 @@ Required GitHub Secrets:
 
 **Alina**
 * **GitHub:** [D0naL1ka](https://github.com/D0naL1ka)
-* **LinkedIn:** [www.linkedin.com/in/alina-suchok](www.linkedin.com/in/alina-suchok)
+* **LinkedIn:** [www.linkedin.com/in/alina-suchok](https://www.linkedin.com/in/alina-suchok/)
 * **Email:** alina.suchok00@gmail.com
