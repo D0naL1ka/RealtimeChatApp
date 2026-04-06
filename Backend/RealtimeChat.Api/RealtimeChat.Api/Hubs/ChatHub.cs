@@ -11,10 +11,18 @@ namespace RealtimeChat.Api.Hubs
         private readonly AppDbContext _context;
         private readonly ISentimentService _sentiment;
 
+        private static readonly Dictionary<string, string> _onlineUsers = new();
+
         public ChatHub(AppDbContext context, ISentimentService sentiment)
         {
             _context = context;
             _sentiment = sentiment;
+        }
+
+        public async Task JoinChat(string username)
+        {
+            _onlineUsers[Context.ConnectionId] = username;
+            await Clients.All.SendAsync("UpdateOnlineUsers", _onlineUsers.Values.Distinct().ToList());
         }
 
         public async Task SendMessage(string user, string text)
@@ -66,6 +74,12 @@ namespace RealtimeChat.Api.Hubs
                 .ToListAsync();
 
             return messages.Cast<object>().ToArray();
+        }
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            _onlineUsers.Remove(Context.ConnectionId);
+            await Clients.All.SendAsync("UpdateOnlineUsers", _onlineUsers.Values.Distinct().ToList());
+            await base.OnDisconnectedAsync(exception);
         }
     }
 }
