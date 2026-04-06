@@ -3,8 +3,6 @@ name: Deploy Frontend to Azure
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'Frontend/**'
 
 jobs:
   build-and-deploy:
@@ -29,7 +27,7 @@ jobs:
           cd Frontend
           npm run build
         env:
-          VITE_BACKEND_URL: https://${{ vars.AZURE_API_APP_NAME }}.azurewebsites.net
+          VITE_BACKEND_URL: https://realtime-chat-api-debcf5fcbyc0h4fy.westeurope-01.azurewebsites.net
 
       - name: Copy web.config to dist
         run: cp Frontend/web.config Frontend/dist/
